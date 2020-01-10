@@ -194,31 +194,32 @@ def make_dir(slide_num, flags):
     '''
 
     if flags == 'slide':
-        return cf.slide_path + 'b_' + str(slide_num) + '.tif'
+        # return cf.slide_path + 'b_' + str(slide_num) + '.tif'
+        return cf.slide_path + 't_' + str(slide_num) + '.tif'
 
     elif flags == 'xml':
-        return cf.xml_path + 'b_' + str(slide_num) +'.xml'
+        return cf.xml_path + 't_' + str(slide_num) +'.xml'
 
     elif flags == 'mask':
         return cf.mask_path
 
     elif flags == 'map':
-        return cf.mask_path + 'b' + str(slide_num) + '_map.png'
+        return cf.mask_path + 't' + str(slide_num) + '_map.png'
 
     elif flags == 'tumor_mask':
-        return cf.mask_path + 'b' + str(slide_num) + '_tumor_mask.png'
+        return cf.mask_path + 't' + str(slide_num) + '_tumor_mask.png'
 
     elif flags == 'tumor_patch':
-        return cf.patch_path + 'b' + str(slide_num) + '/tumor/'
+        return cf.patch_path + 't' + str(slide_num) + '/tumor/'
 
     elif flags == 'normal_mask':
-        return cf.mask_path + 'b' + str(slide_num) + '_normal_mask.png'
+        return cf.mask_path + 't' + str(slide_num) + '_normal_mask.png'
 
     elif flags == 'normal_patch':
-        return cf.patch_path + 'b' + str(slide_num) + '/normal/'
+        return cf.patch_path + 't' + str(slide_num) + '/normal/'
     
     elif flags == 'tissue_mask':
-        return cf.mask_path + 'b' + str(slide_num) + '_tissue_mask.png'
+        return cf.mask_path + 't' + str(slide_num) + '_tissue_mask.png'
 
     else:
         print('make_dir flags error')
@@ -382,6 +383,7 @@ def make_mask(slide_num, mask_level):
     normal_mask_path = make_dir(slide_num, 'normal_mask')
 
     #slide loading
+    Image.Image.tostring = Image.Image.tobytes
     slide = openslide.OpenSlide(slide_path)
     slide_map = np.array(slide.get_thumbnail(slide.level_dimensions[hp.map_level]))
 
@@ -394,7 +396,7 @@ def make_mask(slide_num, mask_level):
     cv2.imwrite(map_path, slide_map)
 
     # check tumor mask / draw tumor mask
-    tumor_mask_exist = chk_file(mask_folder_path, 'b' + str(slide_num) + '_tumor_mask.png')
+    tumor_mask_exist = chk_file(mask_folder_path, 't' + str(slide_num) + '_tumor_mask.png')
     if tumor_mask_exist == False:
         tumor_mask = np.zeros(slide.level_dimensions[mask_level][::-1])
         for coors in coors_list:
@@ -402,7 +404,7 @@ def make_mask(slide_num, mask_level):
             cv2.imwrite(tumor_mask_path, tumor_mask)
 
     # check tissue mask / draw tissue mask
-    tissue_mask_exist = chk_file(mask_folder_path, 'b' + str(slide_num) + '_tissue_mask.png')
+    tissue_mask_exist = chk_file(mask_folder_path, 't' + str(slide_num) + '_tissue_mask.png')
     if tissue_mask_exist == False:
         slide_lv = slide.read_region((0, 0), mask_level, slide.level_dimensions[mask_level])
         slide_lv = cv2.cvtColor(np.array(slide_lv), cv2.COLOR_RGBA2RGB)
@@ -412,7 +414,7 @@ def make_mask(slide_num, mask_level):
         cv2.imwrite(tissue_mask_path, np.array(tissue_mask))
         
     # check normal mask / draw normal mask
-    normal_mask_exist = chk_file(mask_folder_path, 'b' + str(slide_num) + '_normal_mask.png')
+    normal_mask_exist = chk_file(mask_folder_path, 't' + str(slide_num) + '_normal_mask.png')
     if normal_mask_exist == False:
         tumor_mask = cv2.imread(tumor_mask_path, 0) 
         height, width = np.array(tumor_mask).shape
@@ -437,6 +439,12 @@ def divide_patch(slide_num, flags):
 
     tumor_patch_path = make_dir(slide_num, 'tumor_patch')
     normal_patch_path = make_dir(slide_num, 'normal_patch')
+
+    if not os.path.exists(tumor_patch_path):
+        os.makedirs(tumor_patch_path)
+
+    if not os.path.exists(normal_patch_path):
+        os.makedirs(normal_patch_path)
 
     tumor_files = os.listdir(tumor_patch_path)
     tumor_num = len(tumor_files)
@@ -592,7 +600,7 @@ def mining():
     
     '''
 
-    for i in range(cf.mining_csv_path):
+    for i in range(len(os.listdir(cf.mining_csv_path))):
         mining_csv = open(cf.mining_csv_path+'wrong_data_epoch'+str(i)+'.csv',
                             'r', encoding='utf-8')
         reader = csv.reader(mining_csv)
@@ -604,14 +612,16 @@ def mining():
 
 
 
-'''
+# '''
 # run
+SLIDE_NUM = 0
+MASK_LEVEL = hp.mask_level
 make_mask(SLIDE_NUM, MASK_LEVEL)
 make_patch(SLIDE_NUM, MASK_LEVEL)
 divide_patch(SLIDE_NUM,'train')
 make_label()
 mining()
-'''
+# '''
 
 
 
